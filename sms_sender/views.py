@@ -1,6 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
 from rest_framework.views import APIView
+from twilio.base.exceptions import TwilioRestException, TwilioException
 
 from mkvgroup_test_project.settings import TWILLIO_AUTH_TOKEN, TWILLIO_ACCOUNT_SID, TWILLIO_NUMBER
 from twilio.rest import Client
@@ -20,7 +21,17 @@ class HomePageView(View):
         return render(request, 'home.html')
 
 
-class SMSSendingExceprion(Exception):
+class ErrorPageView(View):
+    def get(self, request):
+        return render(request, 'error.html')
+
+
+class SuccessPageView(View):
+    def get(self, request):
+        return render(request, 'success.html')
+
+
+class SMSSendingException(Exception):
     pass
 
 
@@ -31,21 +42,25 @@ class SendSMSAPI(APIView):
         message = request.data['message']
         try:
             self.send_sms(phone_number, message)
-        except SMSSendingExceprion:
+            return render(request, 'success.html', )
+        except SMSSendingException:
             return render(request, 'error.html')
 
-        return render(request, 'success.html', )
-
     def send_sms(self, phone_number: str, message: str):
-        client = Client(TWILLIO_ACCOUNT_SID, TWILLIO_AUTH_TOKEN)
-        message = client.messages.create(
-            from_=TWILLIO_NUMBER,
-            body=message,
-            to=phone_number,
-        )
-        if message.error_message:
-            sms_logger.info(f'Something went wrong, error message: {message.error_message}')
-            raise SMSSendingExceprion()
+        try:
+            client = Client(TWILLIO_ACCOUNT_SID, TWILLIO_AUTH_TOKEN)
+        except TwilioException as error:
+            sms_logger.info(f'Something went wrong, error message: {error}')
+            raise SMSSendingException()
+        try:
+            new_message = client.messages.create(
+                from_=TWILLIO_NUMBER,
+                body=message,
+                to=phone_number,
+            )
+        except TwilioRestException as error:
+            sms_logger.info(f'Something went wrong, error message: {error.msg}')
+            raise SMSSendingException()
         else:
             sms_logger.info(f'SMS was successfully sent to {phone_number}')
 

@@ -10,6 +10,5 @@ RUN adduser --disabled-password admin-user
 RUN chown admin-user:admin-user /web_django/logs.log
 
 USER admin-user
-CMD ["python", "manage.py", "makemigrations", "0.0.0.0:8000"]
-CMD ["python", "manage.py", "migrate", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "migrate"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
